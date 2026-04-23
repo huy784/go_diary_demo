@@ -1,0 +1,8 @@
+### Create new diary
+POST http://localhost:8080/api/v1/diaries
+Content-Type: application/json
+
+{
+  "title": "Test Diary",
+  "content": "This is a test diary content"
+}

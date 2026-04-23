@@ -1,0 +1,98 @@
+(此文件用于储存与ai的对话, 修改代码时请无视此文件)
+对于程序的入口这一部分, 在我的cangjie的类似项目中, core的入口是在core_run里面的, 请你客观评估一下这种做法的好坏
+我将给出原cangjie项目的core_run文件结构以及整个微服务项目的docker compose文件, 你可以参考这些进行修改
+
+以下为core_run文件结构图
+```text
+core_run/
+├── src/
+│   └── main.cj
+├── testing/
+│   ├── diary_add.http
+│   ├── diary_get.http
+│   ├── diary_list.http
+│   ├── diary_remove.http
+│   ├── diary_update.http
+│   ├── root.http
+│   ├── summary_generate.http
+│   ├── summary_get.http
+│   ├── summary_remove.http
+│   ├── summary_update.http
+│   └── swagger.http
+├── cjpm.toml
+├── Dockerfile-arm
+└── Dockerfile-x86
+```
+
+以下为原微服务项目的docker compose文件:
+
+```
+name: meiwen-diary
+
+
+services:
+  meiwen-sqldata:
+    image: "swr.cn-north-4.myhuaweicloud.com/swr-devadv/mysql:8.0"
+    environment:
+      - MYSQL_ROOT_PASSWORD=Pass@word
+    volumes:
+      - meiwen-sqldata:/var/lib/mysql
+      - ./core/db/010_create_diarydb.sql:/docker-entrypoint-initdb.d/010_create_diarydb.sql
+    networks:
+      - meiwen-diary-network
+    ports:
+      - "35206:3306"
+
+
+  meiwen-core:
+    image: meiwen-core
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: core_run/Dockerfile-x86
+    environment:
+      - ModelArtsApiAddress=https://maas-cn-southwest-2.modelarts-maas.com/v1/infers/271c9332-4aa6-4ff5-95b3-0cf8bd94c394/v1/chat/completions
+      - ModelArtsApiPassword=KbIKKiv9HPXnz_jQc1TNrEXK71NlofZWuOszdM7HjUBl_bflozM4Sf8RrE5EVRZ0rxCpzhhHv0kR0R4jlJ4JZw
+      - ModelArtsModelName=DeepSeek-V3
+    networks:
+      - meiwen-diary-network
+    ports:
+      - "35210:8080"
+
+  
+  meiwen-core-swaggerui:
+    image: "swr.cn-north-4.myhuaweicloud.com/swr-devadv/swagger-ui:latest"
+    environment:
+      - SWAGGER_JSON_URL=http://119.3.234.113:35210/swagger.json
+      #- SWAGGER_JSON_URL=http://localhost:35210/swagger.json
+    networks:
+      - meiwen-diary-network
+    ports:
+      - "35211:8080"
+
+  
+  meiwen-ai:
+    image: meiwen-ai
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: ai_run/Dockerfile-x86
+    networks:
+      - meiwen-diary-network
+    ports:
+      - "35220:8080"
+
+
+networks:
+  meiwen-diary-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.17.0/24
+
+
+volumes:
+  meiwen-sqldata:
+    external: false
+```

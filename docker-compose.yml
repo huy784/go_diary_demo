@@ -1,0 +1,53 @@
+name: go-diary
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: go-diary-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: diarydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - go-diary-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  go-diary-core:
+    image: go-diary-core
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: core_run/Dockerfile
+    environment:
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=diarydb
+    networks:
+      - go-diary-network
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+networks:
+  go-diary-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.18.0/24
+
+volumes:
+  postgres_data:
+    external: false
