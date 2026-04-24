@@ -1,15 +1,19 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
+ 
+ENV GOPROXY=https://goproxy.cn,direct
 
 WORKDIR /app
 
-COPY ../core/go.mod ./
-COPY ../core/go.sum ./
+# 复制整个项目（包含 go.work 和所有模块）
+COPY . ./
+
+# 进入 core 目录下载依赖
+WORKDIR /app/core
 RUN go mod download
 
-COPY ../core/ ./
-COPY ./src/ ./src/
-
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./src
+# 构建 core_run（它依赖 core 模块）
+WORKDIR /app
+RUN go build -o main ./core_run/src
 
 FROM alpine:latest
 

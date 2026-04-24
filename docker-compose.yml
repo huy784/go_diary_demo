@@ -1,53 +1,74 @@
 name: go-diary
 
 services:
+  # PostgreSQL 数据库服务
   postgres:
-    image: postgres:15-alpine
-    container_name: go-diary-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: diarydb
+    image: postgres:15-alpine                         # 使用轻量级 Alpine 版本的 PostgreSQL 15
+    container_name: go-diary-postgres                 # 容器名称，便于识别和管理
+    environment:                                      # 数据库环境变量配置
+      - POSTGRES_USER=postgres                       # 数据库用户名
+      - POSTGRES_PASSWORD=postgres                   # 数据库密码
+      - POSTGRES_DB=diarydb                          # 启动时创建的默认数据库
     ports:
+      # 端口映射格式：宿主机端口:容器端口
+      # 将宿主机的 5432 端口映射到容器的 5432 端口
+      # 左侧为宿主机端口（从宿主机访问时使用）
+      # 右侧为容器端口（容器内部服务监听端口）
       - "5432:5432"
     volumes:
+      # 数据卷挂载，将容器内数据库数据持久化到宿主机
+      # 即使容器被删除，数据也不会丢失
       - postgres_data:/var/lib/postgresql/data
     networks:
+      # 加入指定网络，实现容器间通信
       - go-diary-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      # 健康检查配置，确保数据库服务正常启动
+      test: ["CMD-SHELL", "pg_isready -U postgres"]  # 检查数据库是否就绪
+      interval: 10s                                    # 检查间隔：每 10 秒检查一次
+      timeout: 5s                                      # 超时时间：超过 5 秒视为失败
+      retries: 5                                      # 重试次数：连续失败 5 次则判定为不健康
 
+  # 核心服务 (go-diary-core)
   go-diary-core:
-    image: go-diary-core
-    pull_policy: never
+    image: go-diary-core                              # 镜像名称
+    pull_policy: never                                # 从本地构建的镜像拉取策略：从不远程拉取
     build:
-      context: .
-      dockerfile: core_run/Dockerfile
-    environment:
-      - PORT=8080
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=diarydb
+      context: .                                      # 构建上下文：当前目录
+      dockerfile: core_run/Dockerfile                 # 指定 Dockerfile 路径
+    environment:                                      # 环境变量配置
+      - PORT=8080                                     # 服务监听端口（容器内部）
+      - DB_HOST=postgres                             # 数据库主机地址（使用容器网络名称）
+      - DB_PORT=5432                                 # 数据库端口
+      - DB_USER=postgres                              # 数据库用户名
+      - DB_PASS=postgres                              # 数据库密码
+      - DB_NAME=diarydb                               # 数据库名称
     networks:
       - go-diary-network
     ports:
+      # 端口映射格式：宿主机端口:容器端口
+      # 将宿主机的 8080 端口映射到容器的 8080 端口
+      # 左侧为宿主机端口（从宿主机访问时使用）
+      # 右侧为容器端口（容器内部服务监听端口）
       - "8080:8080"
     depends_on:
+      # 声明服务依赖，确保 postgres 服务先于 core 服务启动
+      # 注意：这只保证启动顺序，不保证 postgres 已完全就绪
       - postgres
 
 networks:
+  # 自定义网络配置，实现容器间隔离通信
   go-diary-network:
-    driver: bridge
-    ipam:
+    driver: bridge                                    # 桥接网络模式，允许容器通过主机通信
+    ipam:                                             # IP 地址管理配置
       driver: default
       config:
-        - subnet: 192.168.18.0/24
+        # 指定网络子网，避免与宿主机网络冲突
+        # 所有加入该网络的容器将使用此子网段
+        - subnet: 192.168.28.0/24
 
 volumes:
+  # 命名数据卷，用于持久化存储数据库数据
+  # external: false 表示该卷由 docker-compose 管理，非外部卷
   postgres_data:
     external: false

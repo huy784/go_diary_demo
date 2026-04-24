@@ -3,7 +3,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"go-diary-core/pkg/response"
