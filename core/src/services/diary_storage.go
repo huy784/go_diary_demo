@@ -24,9 +24,9 @@ func (r *diaryRepository) Create(ctx context.Context, diary *models.Diary) error
 }
 
 // GetByID 根据ID获取日记
-func (r *diaryRepository) GetByID(ctx context.Context, id int64) (*models.Diary, error) {
+func (r *diaryRepository) GetByID(ctx context.Context, id string, userIdentity string) (*models.Diary, error) {
 	var diary models.Diary
-	err := r.db.WithContext(ctx).First(&diary, id).Error
+	err := r.db.WithContext(ctx).Where("id = ? AND user_identity_guid = ?", id, userIdentity).First(&diary).Error
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +34,9 @@ func (r *diaryRepository) GetByID(ctx context.Context, id int64) (*models.Diary,
 }
 
 // List 获取所有日记
-func (r *diaryRepository) List(ctx context.Context) ([]*models.Diary, error) {
+func (r *diaryRepository) List(ctx context.Context, userIdentity string) ([]*models.Diary, error) {
 	var diaries []*models.Diary
-	err := r.db.WithContext(ctx).Find(&diaries).Error
+	err := r.db.WithContext(ctx).Where("user_identity_guid = ?", userIdentity).Find(&diaries).Error
 	return diaries, err
 }
 
@@ -46,6 +46,6 @@ func (r *diaryRepository) Update(ctx context.Context, diary *models.Diary) error
 }
 
 // Delete 删除日记
-func (r *diaryRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&models.Diary{}, id).Error
+func (r *diaryRepository) Delete(ctx context.Context, id string, userIdentity string) error {
+	return r.db.WithContext(ctx).Where("id = ? AND user_identity_guid = ?", id, userIdentity).Delete(&models.Diary{}).Error
 }

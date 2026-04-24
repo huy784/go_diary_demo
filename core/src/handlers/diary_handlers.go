@@ -3,11 +3,10 @@
 package handlers
 
 import (
-	"strconv"
-
 	"go-diary-core/pkg/response"
 	"go-diary-core/src/input_models"
 	"go-diary-core/src/services"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,97 +22,104 @@ func NewDiaryHandler(service services.DiaryService) *DiaryHandler {
 }
 
 // ListDiaries 获取日记列表
-// GET /api/v1/diaries
 func (h *DiaryHandler) ListDiaries(c *gin.Context) {
-	diaries, err := h.service.ListDiaries(c.Request.Context())
+	// 从上下文获取用户标识
+	userIdentity, _ := c.Get("userIdentity")
+
+	// 调用服务层获取日记列表
+	diaries, err := h.service.ListDiaries(c.Request.Context(), userIdentity.(string))
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.Error(c, http.StatusInternalServerError, "Failed to get diaries")
 		return
 	}
+
+	// 返回成功响应
 	response.Success(c, diaries)
 }
 
 // GetDiary 获取单条日记
-// GET /api/v1/diaries/:id
 func (h *DiaryHandler) GetDiary(c *gin.Context) {
-	// 解析路径参数id
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	// 从上下文获取用户标识
+	userIdentity, _ := c.Get("userIdentity")
+
+	// 获取路径参数
+	id := c.Param("id")
+
+	// 调用服务层获取日记
+	diary, err := h.service.GetDiary(c.Request.Context(), userIdentity.(string), id)
 	if err != nil {
-		response.BadRequest(c, "invalid id")
+		response.Error(c, http.StatusNotFound, "Diary not found")
 		return
 	}
 
-	// 调用服务层获取日记
-	diary, err := h.service.GetDiary(c.Request.Context(), id)
-	if err != nil {
-		response.NotFound(c, "diary not found")
-		return
-	}
+	// 返回成功响应
 	response.Success(c, diary)
 }
 
 // CreateDiary 创建日记
-// POST /api/v1/diaries
 func (h *DiaryHandler) CreateDiary(c *gin.Context) {
-	// 绑定并校验请求参数
+	// 从上下文获取用户标识
+	userIdentity, _ := c.Get("userIdentity")
+
+	// 绑定请求参数
 	var input input_models.CreateDiaryInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		response.BadRequest(c, err.Error())
+		response.Error(c, http.StatusBadRequest, "Invalid input")
 		return
 	}
 
 	// 调用服务层创建日记
-	diary, err := h.service.CreateDiary(c.Request.Context(), input)
+	diary, err := h.service.CreateDiary(c.Request.Context(), userIdentity.(string), input)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.Error(c, http.StatusInternalServerError, "Failed to create diary")
 		return
 	}
+
+	// 返回成功响应
 	response.Success(c, diary)
 }
 
 // UpdateDiary 更新日记
-// PUT /api/v1/diaries/:id
 func (h *DiaryHandler) UpdateDiary(c *gin.Context) {
-	// 解析路径参数id
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid id")
-		return
-	}
+	// 从上下文获取用户标识
+	userIdentity, _ := c.Get("userIdentity")
 
-	// 绑定并校验请求参数
+	// 获取路径参数
+	id := c.Param("id")
+
+	// 绑定请求参数
 	var input input_models.UpdateDiaryInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		response.BadRequest(c, err.Error())
+		response.Error(c, http.StatusBadRequest, "Invalid input")
 		return
 	}
 
 	// 调用服务层更新日记
-	diary, err := h.service.UpdateDiary(c.Request.Context(), id, input)
+	diary, err := h.service.UpdateDiary(c.Request.Context(), userIdentity.(string), id, input)
 	if err != nil {
-		response.InternalServerError(c, err.Error())
+		response.Error(c, http.StatusInternalServerError, "Failed to update diary")
 		return
 	}
+
+	// 返回成功响应
 	response.Success(c, diary)
 }
 
 // DeleteDiary 删除日记
-// DELETE /api/v1/diaries/:id
 func (h *DiaryHandler) DeleteDiary(c *gin.Context) {
-	// 解析路径参数id
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	// 从上下文获取用户标识
+	userIdentity, _ := c.Get("userIdentity")
+
+	// 获取路径参数
+	id := c.Param("id")
+
+	// 调用服务层删除日记
+	err := h.service.DeleteDiary(c.Request.Context(), userIdentity.(string), id)
 	if err != nil {
-		response.BadRequest(c, "invalid id")
+		response.Error(c, http.StatusInternalServerError, "Failed to delete diary")
 		return
 	}
 
-	// 调用服务层删除日记
-	if err := h.service.DeleteDiary(c.Request.Context(), id); err != nil {
-		response.InternalServerError(c, err.Error())
-		return
-	}
+	// 返回成功响应
 	response.Success(c, nil)
 }

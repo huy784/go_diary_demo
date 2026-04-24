@@ -1,8 +1,17 @@
-### Create new diary
-POST http://localhost:8080/api/v1/diaries
+### Create new diary for admin1
+POST http://localhost:8080/admin1/api/v1/diaries
 Content-Type: application/json
 
 {
-  "title": "Test Diary",
-  "content": "This is a test diary content"
+  "title": "Test Diary for admin1",
+  "content": "This is a test diary content for admin1"
+}
+
+### Create new diary for admin2
+POST http://localhost:8080/admin2/api/v1/diaries
+Content-Type: application/json
+
+{
+  "title": "Test Diary for admin2",
+  "content": "This is a test diary content for admin2"
 }

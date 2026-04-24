@@ -12,6 +12,7 @@ go_diary
 │   ├── src/                 # 源代码目录
 │   │   ├── handlers/        # HTTP 处理器层
 │   │   ├── input_models/    # 输入模型（请求参数）
+│   │   ├── middleware/      # 中间件
 │   │   ├── models/          # 数据模型（数据库映射）
 │   │   ├── services/        # 业务逻辑层（含接口定义）
 │   │   ├── view_models/     # 视图模型（响应数据）
@@ -76,36 +77,39 @@ docker-compose ps
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| GET | /api/v1/diaries | 获取日记列表 |
-| GET | /api/v1/diaries/:id | 获取单条日记 |
-| POST | /api/v1/diaries | 创建日记 |
-| PUT | /api/v1/diaries/:id | 更新日记 |
-| DELETE | /api/v1/diaries/:id | 删除日记 |
+| GET | /:userIdentity/api/v1/diaries | 获取指定用户的日记列表 |
+| GET | /:userIdentity/api/v1/diaries/:id | 获取指定用户的单条日记 |
+| POST | /:userIdentity/api/v1/diaries | 为指定用户创建日记 |
+| PUT | /:userIdentity/api/v1/diaries/:id | 更新指定用户的日记 |
+| DELETE | /:userIdentity/api/v1/diaries/:id | 删除指定用户的日记 |
+
+**注意**：`:userIdentity` 只能是 `admin1` 或 `admin2`（模拟用户）。
 
 ### 请求示例
 
-创建日记：
+创建日记（admin1 用户）：
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/diaries \
+curl -X POST http://localhost:8080/admin1/api/v1/diaries \
   -H "Content-Type: application/json" \
   -d '{"title": "我的日记", "content": "今天是个好日子"}'
 ```
 
-获取日记列表：
+获取日记列表（admin1 用户）：
 
 ```bash
-curl http://localhost:8080/api/v1/diaries
+curl http://localhost:8080/admin1/api/v1/diaries
 ```
 
 ## 技术栈
 
-- Go 1.21+
+- Go 1.23+
 - Gin Web 框架
 - GORM ORM
 - PostgreSQL 数据库
 - Docker + Docker Compose
 - GitHub Actions
+- UUID 生成库（github.com/google/uuid）
 
 ## 端口说明
 

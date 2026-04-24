@@ -1,75 +1,102 @@
-(此文件用于储存与ai的对话, 修改代码时请无视此文件)
-现在核心服务已经能正常运行了, 接下来我们有几个问题急需解决.
-我注意到每行日记的主键是递增的而且没有做用户区分, 这是完全错误的实现方法. 每行日记的数据模型应该有所改变, 这应该是一次很大的改动.
-1. 每个日记数据应当加上用户标识userIdentityGuid. 但考虑到本项目为学习项目, 所以我们不考虑加入用户登录, 而是直接设置两个mock账户分别为admin1和admin2. 访问时直接访问http://localhost:8080/admin1/...可以对此用户的日记进行各种操作.
-2. 每个日记的主键应当使用hash生成唯一主键, 而不是递增.
+# GitHub Actions CI/CD 学习指南
 
+## 下一步操作
 
-# 技术建议
+### 1. 创建 GitHub Actions 工作流文件
 
-## 1. 用户标识实现方案
+在项目根目录创建 `.github/workflows` 目录，然后创建一个工作流文件，例如 `ci.yml`：
 
-**建议方案**：基于 URL 路径的用户区分
+```yaml
+name: CI
 
-**实现细节**：
-- **路由设计**：将路由从 `/api/v1/diaries` 改为 `/admin1/api/v1/diaries` 和 `/admin2/api/v1/diaries`
-- **中间件**：添加用户身份提取中间件，从 URL 路径中解析用户标识
-- **数据模型**：在 `Diary` 模型中添加 `user_identity_guid` 字段
-- **数据隔离**：所有 CRUD 操作都需要根据用户标识进行过滤
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
-**优势**：
-- 符合学习项目的需求，无需实现复杂的认证系统
-- 保持 API 结构清晰，通过 URL 直观区分用户
-- 为未来扩展到真实认证系统预留了接口
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Install dependencies
+        run: |
+          cd core
+          go mod tidy
+      - name: Run tests
+        run: |
+          cd core
+          go test ./...
 
-## 2. 主键生成方案
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Build
+        run: |
+          cd core_run
+          go build -o main ./src
 
-**建议方案**：使用 UUID 作为主键
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker-compose build
+```
 
-**实现细节**：
-- **数据类型**：将 `id` 字段类型从 `bigint` 改为 `varchar(36)`
-- **生成方式**：使用 Go 标准库 `github.com/google/uuid` 生成 UUID
-- **索引优化**：为 UUID 字段添加适当的索引
-- **兼容性**：更新所有相关的 CRUD 操作，使用 UUID 进行查询
+### 2. 编写单元测试
 
-**优势**：
-- 避免了递增 ID 的安全问题（可预测性）
-- 支持分布式系统中的唯一标识
-- 符合现代微服务架构的最佳实践
+在 `core_unittest` 目录中为核心服务编写单元测试：
 
-## 3. 数据库处理方案
+1. 为 `services` 层创建测试文件，例如 `diary_service_test.go`
+2. 为 `handlers` 层创建测试文件，例如 `diary_handlers_test.go`
+3. 使用 `mockery` 等工具生成接口的 mock 实现，便于测试
 
-**方案**：直接删库重建，不进行数据迁移
+### 3. 配置环境变量
 
-**实施步骤**：
-1. 停止当前服务：`docker-compose down`
-2. 删除数据库容器：`docker container rm go-diary-postgres`
-3. 删除数据卷：`docker volume rm go-diary_postgres_data`
-4. 重新启动：`docker-compose up -d`
-5. 启动应用：`go run src/main.go`
+在 GitHub 仓库的 Settings → Secrets and variables → Actions 中添加以下环境变量：
 
-**优势**：
-- 简单直接，适合学习项目
-- 无需编写复杂的迁移脚本
-- GORM 会自动根据新模型创建表结构
+- `DB_HOST`: 数据库主机
+- `DB_PORT`: 数据库端口
+- `DB_USER`: 数据库用户名
+- `DB_PASS`: 数据库密码
+- `DB_NAME`: 数据库名称
 
-## 4. 代码结构调整
+### 4. 测试工作流
 
-**建议方案**：添加用户上下文管理
+1. 提交代码到 GitHub 仓库
+2. 查看 Actions 标签页，观察工作流的执行情况
+3. 分析构建日志，解决可能出现的问题
 
-**实现细节**：
-- **上下文传递**：在 Gin 上下文中存储用户标识
-- **服务层调整**：所有服务方法接收用户标识参数
-- **仓库层调整**：所有数据库操作添加用户标识过滤
-- **测试更新**：更新单元测试和 API 测试以适应新的用户模型
+### 5. 扩展工作流
 
-## 5. 安全性考虑
+根据学习进度，逐步扩展工作流：
 
-**建议方案**：添加基本的访问控制
+1. 添加代码质量检查（如 `golangci-lint`）
+2. 添加部署步骤（如部署到测试环境）
+3. 添加发布步骤（如构建并推送 Docker 镜像）
 
-**实现细节**：
-- **白名单验证**：验证 URL 中的用户标识是否在允许的列表中（admin1、admin2）
-- **参数验证**：确保用户只能访问自己的日记数据
-- **日志记录**：记录关键操作的用户标识
+### 6. 学习资源
 
-这些建议将使项目更加符合实际应用场景，同时保持学习项目的简洁性。
+- [GitHub Actions 官方文档](https://docs.github.com/en/actions)
+- [GitHub Actions 工作流语法](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions)
+- [Go 项目的 CI/CD 最佳实践](https://golang.org/doc/ci)
+
+### 7. 实践目标
+
+- 实现代码提交自动运行测试
+- 实现构建成功后自动构建 Docker 镜像
+- 理解 CI/CD 流程的各个环节
+- 掌握 GitHub Actions 工作流的配置和调试

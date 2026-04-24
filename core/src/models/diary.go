@@ -1,14 +1,27 @@
-// 数据模型层
+// 日记数据模型
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 // Diary 日记数据模型
-// 对应数据库中的 diaries 表
 type Diary struct {
-	ID        int64     `gorm:"primaryKey;autoIncrement"` // 主键，自增
-	Title     string    `gorm:"size:255;not null"`       // 日记标题，最大255字符
-	Content   string    `gorm:"type:text;not null"`       // 日记内容，文本类型
-	CreatedAt time.Time `gorm:"autoCreateTime"`           // 创建时间，自动设置
-	UpdatedAt time.Time `gorm:"autoUpdateTime"`           // 更新时间，自动设置
+	ID               string    `gorm:"primaryKey;type:varchar(36)"`
+	UserIdentityGuid string    `gorm:"type:varchar(50);not null;index"`
+	Title            string    `gorm:"size:255;not null"`
+	Content          string    `gorm:"type:text;not null"`
+	CreatedAt        time.Time `gorm:"autoCreateTime"`
+	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
+}
+
+// BeforeCreate GORM 钩子，创建前生成 UUID
+func (d *Diary) BeforeCreate(tx *gorm.DB) error {
+	if d.ID == "" {
+		d.ID = uuid.New().String()
+	}
+	return nil
 }

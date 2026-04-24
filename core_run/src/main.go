@@ -6,6 +6,7 @@ import (
 
 	"go-diary-core/pkg/config"
 	"go-diary-core/src/handlers"
+	"go-diary-core/src/middleware"
 	"go-diary-core/src/services"
 
 	"github.com/gin-gonic/gin"
@@ -30,17 +31,22 @@ func main() {
 	// 创建Gin默认实例（包含Logger和Recovery中间件）
 	r := gin.Default()
 
-	// API路由分组
-	api := r.Group("/api/v1")
+	// 路由分组 - 包含用户标识的路由
+	userGroup := r.Group("/:userIdentity")
+	userGroup.Use(middleware.UserIdentityMiddleware())
 	{
-		// 日记相关路由
-		diaries := api.Group("/diaries")
+		// API路由分组
+		api := userGroup.Group("/api/v1")
 		{
-			diaries.GET("", diaryHandler.ListDiaries)        // 获取日记列表
-			diaries.GET("/:id", diaryHandler.GetDiary)      // 获取单条日记
-			diaries.POST("", diaryHandler.CreateDiary)      // 创建日记
-			diaries.PUT("/:id", diaryHandler.UpdateDiary)  // 更新日记
-			diaries.DELETE("/:id", diaryHandler.DeleteDiary) // 删除日记
+			// 日记相关路由
+			diaries := api.Group("/diaries")
+			{
+				diaries.GET("", diaryHandler.ListDiaries)        // 获取日记列表
+				diaries.GET("/:id", diaryHandler.GetDiary)      // 获取单条日记
+				diaries.POST("", diaryHandler.CreateDiary)      // 创建日记
+				diaries.PUT("/:id", diaryHandler.UpdateDiary)  // 更新日记
+				diaries.DELETE("/:id", diaryHandler.DeleteDiary) // 删除日记
+			}
 		}
 	}
 

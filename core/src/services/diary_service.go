@@ -6,11 +6,13 @@ import (
 	"go-diary-core/src/input_models"
 	"go-diary-core/src/models"
 	"go-diary-core/src/view_models"
+
+	"gorm.io/gorm"
 )
 
 // diaryService 日记服务实现
 type diaryService struct {
-	repo DiaryRepository // 依赖日记仓库接口
+	repo DiaryRepository
 }
 
 // NewDiaryService 创建日记服务实例
@@ -19,55 +21,96 @@ func NewDiaryService(repo DiaryRepository) DiaryService {
 }
 
 // CreateDiary 创建日记
-func (s *diaryService) CreateDiary(ctx context.Context, input input_models.CreateDiaryInput) (*view_models.DiaryViewModel, error) {
-	// 构建日记模型
+func (s *diaryService) CreateDiary(ctx context.Context, userIdentity string, input input_models.CreateDiaryInput) (*view_models.DiaryViewModel, error) {
+	// 创建日记模型
 	diary := &models.Diary{
-		Title:   input.Title,
-		Content: input.Content,
+		UserIdentityGuid: userIdentity,
+		Title:            input.Title,
+		Content:          input.Content,
 	}
 
-	// 调用仓库层创建数据
-	if err := s.repo.Create(ctx, diary); err != nil {
-		return nil, err
-	}
-
-	// 转换为视图模型返回
-	return s.toViewModel(diary), nil
-}
-
-// GetDiary 获取单条日记
-func (s *diaryService) GetDiary(ctx context.Context, id int64) (*view_models.DiaryViewModel, error) {
-	diary, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return s.toViewModel(diary), nil
-}
-
-// ListDiaries 获取日记列表
-func (s *diaryService) ListDiaries(ctx context.Context) ([]*view_models.DiaryViewModel, error) {
-	diaries, err := s.repo.List(ctx)
+	// 调用仓库创建
+	err := s.repo.Create(ctx, diary)
 	if err != nil {
 		return nil, err
 	}
 
-	// 转换为视图模型切片
-	result := make([]*view_models.DiaryViewModel, len(diaries))
-	for i, d := range diaries {
-		result[i] = s.toViewModel(d)
+	// 转换为视图模型
+	return &view_models.DiaryViewModel{
+		ID:        diary.ID,
+		Title:     diary.Title,
+		Content:   diary.Content,
+		CreatedAt: diary.CreatedAt,
+		UpdatedAt: diary.UpdatedAt,
+	}, nil
+}
+
+// GetDiary 根据ID获取日记
+func (s *diaryService) GetDiary(ctx context.Context, userIdentity string, id string) (*view_models.DiaryViewModel, error) {
+	// 调用仓库获取
+	diary, err := s.repo.GetByID(ctx, id, userIdentity)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, err
+		}
+		return nil, err
 	}
-	return result, nil
+
+	// 检查日记是否存在
+	if diary == nil {
+		return nil, nil
+	}
+
+	// 转换为视图模型
+	return &view_models.DiaryViewModel{
+		ID:        diary.ID,
+		Title:     diary.Title,
+		Content:   diary.Content,
+		CreatedAt: diary.CreatedAt,
+		UpdatedAt: diary.UpdatedAt,
+	}, nil
+}
+
+// ListDiaries 获取所有日记
+func (s *diaryService) ListDiaries(ctx context.Context, userIdentity string) ([]*view_models.DiaryViewModel, error) {
+	// 调用仓库获取
+	diaries, err := s.repo.List(ctx, userIdentity)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为视图模型
+	viewModels := make([]*view_models.DiaryViewModel, len(diaries))
+	for i, diary := range diaries {
+		viewModels[i] = &view_models.DiaryViewModel{
+			ID:        diary.ID,
+			Title:     diary.Title,
+			Content:   diary.Content,
+			CreatedAt: diary.CreatedAt,
+			UpdatedAt: diary.UpdatedAt,
+		}
+	}
+
+	return viewModels, nil
 }
 
 // UpdateDiary 更新日记
-func (s *diaryService) UpdateDiary(ctx context.Context, id int64, input input_models.UpdateDiaryInput) (*view_models.DiaryViewModel, error) {
-	// 先获取原日记
-	diary, err := s.repo.GetByID(ctx, id)
+func (s *diaryService) UpdateDiary(ctx context.Context, userIdentity string, id string, input input_models.UpdateDiaryInput) (*view_models.DiaryViewModel, error) {
+	// 先获取日记
+	diary, err := s.repo.GetByID(ctx, id, userIdentity)
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, err
+		}
 		return nil, err
 	}
 
-	// 更新字段（只更新非空字段）
+	// 检查日记是否存在
+	if diary == nil {
+		return nil, nil
+	}
+
+	// 更新字段
 	if input.Title != "" {
 		diary.Title = input.Title
 	}
@@ -75,26 +118,23 @@ func (s *diaryService) UpdateDiary(ctx context.Context, id int64, input input_mo
 		diary.Content = input.Content
 	}
 
-	// 保存更新
-	if err := s.repo.Update(ctx, diary); err != nil {
+	// 调用仓库更新
+	err = s.repo.Update(ctx, diary)
+	if err != nil {
 		return nil, err
 	}
 
-	return s.toViewModel(diary), nil
+	// 转换为视图模型
+	return &view_models.DiaryViewModel{
+		ID:        diary.ID,
+		Title:     diary.Title,
+		Content:   diary.Content,
+		CreatedAt: diary.CreatedAt,
+		UpdatedAt: diary.UpdatedAt,
+	}, nil
 }
 
 // DeleteDiary 删除日记
-func (s *diaryService) DeleteDiary(ctx context.Context, id int64) error {
-	return s.repo.Delete(ctx, id)
-}
-
-// toViewModel 将数据模型转换为视图模型
-func (s *diaryService) toViewModel(d *models.Diary) *view_models.DiaryViewModel {
-	return &view_models.DiaryViewModel{
-		ID:        d.ID,
-		Title:     d.Title,
-		Content:   d.Content,
-		CreatedAt: d.CreatedAt,
-		UpdatedAt: d.UpdatedAt,
-	}
+func (s *diaryService) DeleteDiary(ctx context.Context, userIdentity string, id string) error {
+	return s.repo.Delete(ctx, id, userIdentity)
 }

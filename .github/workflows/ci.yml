@@ -1,0 +1,60 @@
+# GitHub Actions CI 工作流配置
+# 用于自动测试、构建和 Docker 镜像构建
+
+name: CI
+
+# 触发条件：推送或拉取请求到 main 或 master 分支
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # 测试阶段：运行单元测试
+  test:
+    runs-on: ubuntu-latest  # 使用最新版 Ubuntu 环境
+    steps:
+      # 检出代码
+      - uses: actions/checkout@v4
+      # 设置 Go 环境
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'  # 使用 Go 1.23 版本
+      # 安装依赖
+      - name: Install dependencies
+        run: |
+          cd core
+          go mod tidy
+      # 运行测试
+      - name: Run tests
+        run: |
+          cd core
+          go test ./...
+
+  # 构建阶段：编译核心服务
+  build:
+    needs: test  # 依赖 test 阶段完成
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      # 构建应用
+      - name: Build
+        run: |
+          cd core_run
+          go build -o main ./src
+
+  # Docker 阶段：构建 Docker 镜像
+  docker:
+    needs: build  # 依赖 build 阶段完成
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 构建 Docker 镜像
+      - name: Build Docker image
+        run: docker-compose build
