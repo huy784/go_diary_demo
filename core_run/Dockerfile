@@ -13,7 +13,7 @@ RUN go mod download
 
 # 构建 core_run（它依赖 core 模块）
 WORKDIR /app
-RUN go build -o main ./core_run/src
+RUN go build -o main ./core_run
 
 FROM alpine:latest
 
