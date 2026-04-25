@@ -9,8 +9,11 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  schedule:
+    - cron:
+      - '0 0 * * *'
 
-jobs:
+   jobs:
   # 测试阶段：运行单元测试
   test:
     runs-on: ubuntu-latest  # 使用最新版 Ubuntu 环境
