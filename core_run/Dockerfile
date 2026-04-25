@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM mirror.gcr.io/library/golang:1.23-alpine AS builder
 
 ENV GOPROXY=https://goproxy.cn,direct
 
@@ -16,7 +16,7 @@ WORKDIR /app/core_run
 RUN go mod download
 RUN go build -o main ./src
 
-FROM alpine:latest
+FROM mirror.gcr.io/library/alpine:latest
 
 WORKDIR /root/
 

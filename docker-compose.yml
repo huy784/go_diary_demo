@@ -3,7 +3,7 @@ name: go-diary
 services:
   # PostgreSQL 数据库服务
   postgres:
-    image: postgres:15-alpine                         # 使用轻量级 Alpine 版本的 PostgreSQL 15
+    image: mirror.gcr.io/library/postgres:15-alpine                         # 使用轻量级 Alpine 版本的 PostgreSQL 15
     container_name: go-diary-postgres                 # 容器名称，便于识别和管理
     environment:                                      # 数据库环境变量配置
       - POSTGRES_USER=postgres                       # 数据库用户名
