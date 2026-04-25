@@ -9,6 +9,8 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  schedule:
+    - cron: '0 0 * * *'  # 每天凌晨 0:00 执行
 
 jobs:
   # 测试阶段：运行单元测试
